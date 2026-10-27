@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Inventori Bahan Mentah FSC</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Library SheetJS untuk Export ke Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sistem Pengurusan Inventori FSC</h1>
+            <p>Pengurusan Stok In & Stok Out Bahan Mentah Kiosk</p>
+        </header>
+
+        <!-- Dashboard Ringkasan Stok -->
+        <section class="card">
+            <h2>Baki Stok Semasa</h2>
+            <div class="table-responsive">
+                <table id="stockTable">
+                    <thead>
+                        <tr>
+                            <th>Bil</th>
+                            <th>Nama Barang</th>
+                            <th>Kategori</th>
+                            <th>Harga Pack (RM)</th>
+                            <th>Harga Carton (RM)</th>
+                            <th>Baki (Pack)</th>
+                            <th>Baki (Carton)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockTableBody">
+                        <!-- Data dimasukkan melalui JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <div class="forms-grid">
+            <!-- Borang Stok In -->
+            <section class="card form-card stock-in">
+                <h2>📥 Transaksi Stok IN (Stok Masuk)</h2>
+                <form id="formStockIn">
+                    <div class="form-group">
+                        <label for="inInputter">Nama Penginput (Pilih):</label>
+                        <select id="inInputter" required>
+                            <option value="">-- Pilih Nama Penginput --</option>
+                            <option value="Encik Zaim">Encik Zaim</option>
+                            <option value="Encik Azman">Encik Azman</option>
+                            <option value="Puan Su">Puan Su</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inItem">Barang:</label>
+                        <select id="inItem" required>
+                            <option value="">-- Pilih Barang --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="inPack">Jumlah Pack:</label>
+                            <input type="number" id="inPack" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="inCarton">Jumlah Carton:</label>
+                            <input type="number" id="inCarton" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-in">Tambah Stok In</button>
+                </form>
+            </section>
+
+            <!-- Borang Stok Out -->
+            <section class="card form-card stock-out">
+                <h2>📤 Transaksi Stok OUT (Pengambilan)</h2>
+                <form id="formStockOut">
+                    <div class="form-group">
+                        <label for="outApplicant">Nama Pemohon (Tulis):</label>
+                        <input type="text" id="outApplicant" placeholder="Masukkan nama pemohon" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="outMatric">No. Matrik:</label>
+                            <input type="text" id="outMatric" placeholder="Contoh: 284512">
+                        </div>
+                        <div class="form-group">
+                            <label for="outKiosk">Lokasi Kiosk:</label>
+                            <input type="text" id="outKiosk" placeholder="Contoh: Kiosk A">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="outItem">Barang:</label>
+                        <select id="outItem" required>
+                            <option value="">-- Pilih Barang --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="outPack">Jumlah Pack:</label>
+                            <input type="number" id="outPack" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="outCarton">Jumlah Carton:</label>
+                            <input type="number" id="outCarton" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-out">Rekod Stok Out</button>
+                </form>
+            </section>
+        </div>
+
+        <!-- Sejarah Transaksi & Butang Export Excel -->
+        <section class="card">
+            <div class="section-header-flex">
+                <h2>📜 Log Sejarah Transaksi</h2>
+                <button type="button" id="exportBtn" class="btn-excel">📊 Muat Turun ke Excel (.xlsx)</button>
+            </div>
+            <div class="table-responsive">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Tarikh & Masa</th>
+                            <th>Jenis</th>
+                            <th>Penginput / Pemohon</th>
+                            <th>Barang</th>
+                            <th>Kuantiti (Pack / Carton)</th>
+                            <th>Jumlah Harga (RM)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <!-- Data Sejarah Transaksi -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
