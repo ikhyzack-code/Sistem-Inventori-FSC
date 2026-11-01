@@ -1,5 +1,5 @@
 // Data Barang berdasarkan Borang Pengambilan FSC
-const inventoryData = [
+let inventoryData = JSON.parse(localStorage.getItem('inventoryDataFSC')) || [
     { id: 1, name: "Fried Chicken (Hot Spicy) - Rib", category: "Bahan Mentah", packPrice: 101.70, cartonPrice: 305.10, stockPack: 0, stockCarton: 0 },
     { id: 2, name: "Fried Chicken (Original) - Rib", category: "Bahan Mentah", packPrice: 101.70, cartonPrice: 305.10, stockPack: 0, stockCarton: 0 },
     { id: 3, name: "Korean Fried Chicken", category: "Bahan Mentah", packPrice: 0, cartonPrice: 0, stockPack: 0, stockCarton: 0 },
@@ -17,18 +17,31 @@ const inventoryData = [
     { id: 15, name: "Mayonnaise (1kg)", category: "Sos/Aksesori", packPrice: 12.00, cartonPrice: 0, stockPack: 0, stockCarton: 0 }
 ];
 
-const historyData = [];
+let historyData = JSON.parse(localStorage.getItem('historyDataFSC')) || [];
 
 // Muat data awal ke dalam UI
 document.addEventListener('DOMContentLoaded', () => {
     populateItemDropdowns();
     renderStockTable();
+    renderHistoryTable();
+    setupDeleteSelectedHistoryFeature();
 });
+
+// Simpan data ke localStorage
+function saveToLocalStorage() {
+    localStorage.setItem('inventoryDataFSC', JSON.stringify(inventoryData));
+    localStorage.setItem('historyDataFSC', JSON.stringify(historyData));
+}
 
 // Masukkan pilihan barang ke dalam Dropdown
 function populateItemDropdowns() {
     const inSelect = document.getElementById('inItem');
     const outSelect = document.getElementById('outItem');
+
+    if (!inSelect || !outSelect) return;
+
+    inSelect.innerHTML = '<option value="">-- Pilih Barang --</option>';
+    outSelect.innerHTML = '<option value="">-- Pilih Barang --</option>';
 
     inventoryData.forEach(item => {
         const optionIn = document.createElement('option');
@@ -43,9 +56,10 @@ function populateItemDropdowns() {
     });
 }
 
-// Paparkan jadual stok
+// Paparkan Jadual Stok Semasa
 function renderStockTable() {
     const tbody = document.getElementById('stockTableBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     inventoryData.forEach(item => {
@@ -64,96 +78,124 @@ function renderStockTable() {
 }
 
 // Pengendali Borang Stok IN
-document.getElementById('formStockIn').addEventListener('submit', function(e) {
-    e.preventDefault();
+const formStockIn = document.getElementById('formStockIn');
+if (formStockIn) {
+    formStockIn.addEventListener('submit', function(e) {
+        e.preventDefault();
 
-    const inputter = document.getElementById('inInputter').value;
-    const itemId = parseInt(document.getElementById('inItem').value);
-    const qtyPack = parseInt(document.getElementById('inPack').value) || 0;
-    const qtyCarton = parseInt(document.getElementById('inCarton').value) || 0;
+        const inputter = document.getElementById('inInputter').value;
+        const itemId = parseInt(document.getElementById('inItem').value);
+        const qtyPack = parseInt(document.getElementById('inPack').value) || 0;
+        const qtyCarton = parseInt(document.getElementById('inCarton').value) || 0;
 
-    if (qtyPack === 0 && qtyCarton === 0) {
-        alert('Sila masukkan sekurang-kurangnya 1 Pack atau Carton!');
-        return;
-    }
+        if (!itemId) {
+            alert('Sila pilih barang terlebih dahulu!');
+            return;
+        }
 
-    const item = inventoryData.find(i => i.id === itemId);
-    item.stockPack += qtyPack;
-    item.stockCarton += qtyCarton;
+        if (qtyPack === 0 && qtyCarton === 0) {
+            alert('Sila masukkan sekurang-kurangnya 1 Pack atau Carton!');
+            return;
+        }
 
-    const totalPrice = (qtyPack * item.packPrice) + (qtyCarton * item.cartonPrice);
+        const item = inventoryData.find(i => i.id === itemId);
+        item.stockPack += qtyPack;
+        item.stockCarton += qtyCarton;
 
-    // Tambah Rekod Sejarah
-    addHistoryRecord({
-        date: new Date().toLocaleString('ms-MY'),
-        type: 'STOK IN',
-        person: `${inputter} (Penginput)`,
-        itemName: item.name,
-        qty: `${qtyPack} Pack / ${qtyCarton} Carton`,
-        totalPrice: totalPrice
+        const totalPrice = (qtyPack * item.packPrice) + (qtyCarton * item.cartonPrice);
+
+        addHistoryRecord({
+            date: new Date().toLocaleString('ms-MY'),
+            type: 'STOK IN',
+            person: `${inputter} (Penginput)`,
+            itemId: item.id, // Simpan ID untuk rujukan padanan stok
+            itemName: item.name,
+            qtyPack: qtyPack,
+            qtyCarton: qtyCarton,
+            qty: `${qtyPack} Pack / ${qtyCarton} Carton`,
+            totalPrice: totalPrice
+        });
+
+        saveToLocalStorage();
+        renderStockTable();
+        this.reset();
+        alert('Stok In berjaya direkodkan!');
     });
-
-    renderStockTable();
-    this.reset();
-    alert('Stok In berjaya direkodkan!');
-});
+}
 
 // Pengendali Borang Stok OUT
-document.getElementById('formStockOut').addEventListener('submit', function(e) {
-    e.preventDefault();
+const formStockOut = document.getElementById('formStockOut');
+if (formStockOut) {
+    formStockOut.addEventListener('submit', function(e) {
+        e.preventDefault();
 
-    const applicant = document.getElementById('outApplicant').value;
-    const matric = document.getElementById('outMatric').value;
-    const kiosk = document.getElementById('outKiosk').value;
-    const itemId = parseInt(document.getElementById('outItem').value);
-    const qtyPack = parseInt(document.getElementById('outPack').value) || 0;
-    const qtyCarton = parseInt(document.getElementById('outCarton').value) || 0;
+        const applicant = document.getElementById('outApplicant').value;
+        const matric = document.getElementById('outMatric').value;
+        const kiosk = document.getElementById('outKiosk').value;
+        const itemId = parseInt(document.getElementById('outItem').value);
+        const qtyPack = parseInt(document.getElementById('outPack').value) || 0;
+        const qtyCarton = parseInt(document.getElementById('outCarton').value) || 0;
 
-    if (qtyPack === 0 && qtyCarton === 0) {
-        alert('Sila masukkan sekurang-kurangnya 1 Pack atau Carton!');
-        return;
-    }
+        if (!itemId) {
+            alert('Sila pilih barang terlebih dahulu!');
+            return;
+        }
 
-    const item = inventoryData.find(i => i.id === itemId);
+        if (qtyPack === 0 && qtyCarton === 0) {
+            alert('Sila masukkan sekurang-kurangnya 1 Pack atau Carton!');
+            return;
+        }
 
-    // Semakan Baki Stok
-    if (qtyPack > item.stockPack || qtyCarton > item.stockCarton) {
-        alert(`Stok tidak mencukupi! Baki semasa: ${item.stockPack} Pack, ${item.stockCarton} Carton.`);
-        return;
-    }
+        const item = inventoryData.find(i => i.id === itemId);
 
-    item.stockPack -= qtyPack;
-    item.stockCarton -= qtyCarton;
+        if (qtyPack > item.stockPack || qtyCarton > item.stockCarton) {
+            alert(`Stok tidak mencukupi! Baki semasa: ${item.stockPack} Pack, ${item.stockCarton} Carton.`);
+            return;
+        }
 
-    const totalPrice = (qtyPack * item.packPrice) + (qtyCarton * item.cartonPrice);
+        item.stockPack -= qtyPack;
+        item.stockCarton -= qtyCarton;
 
-    const personDetail = `${applicant} ${matric ? '(' + matric + ')' : ''} ${kiosk ? '[' + kiosk + ']' : ''}`;
+        const totalPrice = (qtyPack * item.packPrice) + (qtyCarton * item.cartonPrice);
+        const personDetail = `${applicant} ${matric ? '(' + matric + ')' : ''} ${kiosk ? '[' + kiosk + ']' : ''}`;
 
-    // Tambah Rekod Sejarah
-    addHistoryRecord({
-        date: new Date().toLocaleString('ms-MY'),
-        type: 'STOK OUT',
-        person: personDetail,
-        itemName: item.name,
-        qty: `${qtyPack} Pack / ${qtyCarton} Carton`,
-        totalPrice: totalPrice
+        addHistoryRecord({
+            date: new Date().toLocaleString('ms-MY'),
+            type: 'STOK OUT',
+            person: personDetail,
+            itemId: item.id, // Simpan ID untuk rujukan padanan stok
+            itemName: item.name,
+            qtyPack: qtyPack,
+            qtyCarton: qtyCarton,
+            qty: `${qtyPack} Pack / ${qtyCarton} Carton`,
+            totalPrice: totalPrice
+        });
+
+        saveToLocalStorage();
+        renderStockTable();
+        this.reset();
+        alert('Stok Out (Pengambilan) berjaya direkodkan!');
     });
+}
 
-    renderStockTable();
-    this.reset();
-    alert('Stok Out (Pengambilan) berjaya direkodkan!');
-});
-
-// Paparkan Sejarah Transaksi
+// Tambah Rekod ke Sejarah & Paparkan
 function addHistoryRecord(record) {
     historyData.unshift(record);
+    saveToLocalStorage();
+    renderHistoryTable();
+}
+
+// Paparkan Jadual Sejarah dengan Checkbox
+function renderHistoryTable() {
     const tbody = document.getElementById('historyTableBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
-    historyData.forEach(rec => {
+    historyData.forEach((rec, index) => {
         const row = document.createElement('tr');
         const badgeClass = rec.type === 'STOK IN' ? 'badge-in' : 'badge-out';
         row.innerHTML = `
+            <td style="text-align: center;"><input type="checkbox" class="historyCheckbox" data-index="${index}"></td>
             <td>${rec.date}</td>
             <td><span class="${badgeClass}">${rec.type}</span></td>
             <td>${rec.person}</td>
@@ -163,30 +205,96 @@ function addHistoryRecord(record) {
         `;
         tbody.appendChild(row);
     });
+
+    const selectAllHistory = document.getElementById('selectAllHistory');
+    if (selectAllHistory) selectAllHistory.checked = false;
+}
+
+// Ciri Pilih & Padam Log Transaksi (Auto Ubah Baki Stok)
+function setupDeleteSelectedHistoryFeature() {
+    const deleteSelectedHistoryBtn = document.getElementById('deleteSelectedHistoryBtn');
+    const selectAllHistory = document.getElementById('selectAllHistory');
+
+    if (selectAllHistory) {
+        selectAllHistory.addEventListener('change', function() {
+            const rowCheckboxes = document.querySelectorAll('.historyCheckbox');
+            rowCheckboxes.forEach(cb => {
+                cb.checked = selectAllHistory.checked;
+            });
+        });
+    }
+
+    if (deleteSelectedHistoryBtn) {
+        deleteSelectedHistoryBtn.addEventListener('click', function() {
+            const checkedBoxes = document.querySelectorAll('.historyCheckbox:checked');
+
+            if (checkedBoxes.length === 0) {
+                alert('Sila tandakan (pilih) sekurang-kurangnya satu rekod log yang hendak dipadam!');
+                return;
+            }
+
+            const confirmDelete = confirm(`Adakah anda pasti mahu memadam ${checkedBoxes.length} rekod log transaksi yang dipilih? Baki stok semasa akan dilaraskan semula.`);
+            if (!confirmDelete) return;
+
+            const indexesToDelete = Array.from(checkedBoxes)
+                .map(cb => parseInt(cb.getAttribute('data-index')))
+                .sort((a, b) => b - a);
+
+            indexesToDelete.forEach(index => {
+                const record = historyData[index];
+                const item = inventoryData.find(i => i.id === record.itemId);
+
+                if (item) {
+                    // Jika log yang dipadam adalah STOK IN, maka tolak semula stok (reverse)
+                    if (record.type === 'STOK IN') {
+                        item.stockPack -= (record.qtyPack || 0);
+                        item.stockCarton -= (record.qtyCarton || 0);
+                        
+                        // Elakkan baki jadi negatif
+                        if (item.stockPack < 0) item.stockPack = 0;
+                        if (item.stockCarton < 0) item.stockCarton = 0;
+                    } 
+                    // Jika log yang dipadam adalah STOK OUT, maka tambah balik stok (reverse)
+                    else if (record.type === 'STOK OUT') {
+                        item.stockPack += (record.qtyPack || 0);
+                        item.stockCarton += (record.qtyCarton || 0);
+                    }
+                }
+
+                // Buang dari senarai sejarah
+                historyData.splice(index, 1);
+            });
+
+            saveToLocalStorage();
+            renderStockTable();
+            renderHistoryTable();
+            alert('Log transaksi berjaya dipadam dan baki stok semasa telah dikemas kini.');
+        });
+    }
 }
 
 // Fungsi Muat Turun ke Excel (.xlsx)
-document.getElementById('exportBtn').addEventListener('click', function() {
-    if (historyData.length === 0) {
-        alert('Tiada sebarang rekod transaksi untuk dimuat turun buat masa ini.');
-        return;
-    }
+const exportBtn = document.getElementById('exportBtn');
+if (exportBtn) {
+    exportBtn.addEventListener('click', function() {
+        if (historyData.length === 0) {
+            alert('Tiada sebarang rekod transaksi untuk dimuat turun buat masa ini.');
+            return;
+        }
 
-    // Ubah format data untuk Excel
-    const excelData = historyData.map(item => ({
-        "Tarikh & Masa": item.date,
-        "Jenis Transaksi": item.type,
-        "Penginput / Pemohon": item.person,
-        "Nama Barang": item.itemName,
-        "Kuantiti": item.qty,
-        "Jumlah Harga (RM)": item.totalPrice.toFixed(2)
-    }));
+        const excelData = historyData.map(item => ({
+            "Tarikh & Masa": item.date,
+            "Jenis Transaksi": item.type,
+            "Penginput / Pemohon": item.person,
+            "Nama Barang": item.itemName,
+            "Kuantiti": item.qty,
+            "Jumlah Harga (RM)": item.totalPrice.toFixed(2)
+        }));
 
-    // Buat worksheet dan workbook
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Log Transaksi");
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Log Transaksi");
 
-    // Simpan fail dengan nama Laporan_Inventori_FSC.xlsx
-    XLSX.writeFile(workbook, "Laporan_Inventori_FSC.xlsx");
-});
+        XLSX.writeFile(workbook, "Laporan_Inventori_FSC.xlsx");
+    });
+}
