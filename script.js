@@ -19,12 +19,73 @@ let inventoryData = JSON.parse(localStorage.getItem('inventoryDataFSC')) || [
 
 let historyData = JSON.parse(localStorage.getItem('historyDataFSC')) || [];
 
+// Fungsi Custom Alert (Menggantikan alert() biasa)
+function customAlert(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('customModal');
+        const title = document.getElementById('modalTitle');
+        const msg = document.getElementById('modalMessage');
+        const okBtn = document.getElementById('modalOkBtn');
+        const cancelBtn = document.getElementById('modalCancelBtn');
+
+        title.textContent = "Sistem Inventori FSC";
+        msg.textContent = message;
+        cancelBtn.style.display = 'none';
+        modal.style.display = 'flex';
+
+        okBtn.onclick = function() {
+            modal.style.display = 'none';
+            resolve(true);
+        };
+    });
+}
+
+// Fungsi Custom Confirm (Menggantikan confirm() biasa)
+function customConfirm(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('customModal');
+        const title = document.getElementById('modalTitle');
+        const msg = document.getElementById('modalMessage');
+        const okBtn = document.getElementById('modalOkBtn');
+        const cancelBtn = document.getElementById('modalCancelBtn');
+
+        title.textContent = "Sistem Inventori FSC";
+        msg.textContent = message;
+        cancelBtn.style.display = 'inline-block';
+        modal.style.display = 'flex';
+
+        okBtn.onclick = function() {
+            modal.style.display = 'none';
+            resolve(true);
+        };
+
+        cancelBtn.onclick = function() {
+            modal.style.display = 'none';
+            resolve(false);
+        };
+    });
+}
+
 // Muat data awal ke dalam UI
 document.addEventListener('DOMContentLoaded', () => {
     populateItemDropdowns();
     renderStockTable();
     renderHistoryTable();
-    setupDeleteSelectedHistoryFeature();
+    
+    // Pasang fungsi butang padam log
+    const deleteBtn = document.getElementById('deleteSelectedHistoryBtn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', deleteSelectedHistory);
+    }
+
+    // Pasang fungsi Select All checkbox log
+    const selectAll = document.getElementById('selectAllHistory');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.historyCheckbox');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        });
+    }
 });
 
 // Simpan data ke localStorage
@@ -80,7 +141,7 @@ function renderStockTable() {
 // Pengendali Borang Stok IN
 const formStockIn = document.getElementById('formStockIn');
 if (formStockIn) {
-    formStockIn.addEventListener('submit', function(e) {
+    formStockIn.addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const inputter = document.getElementById('inInputter').value;
@@ -89,12 +150,12 @@ if (formStockIn) {
         const qtyCarton = parseInt(document.getElementById('inCarton').value) || 0;
 
         if (!itemId) {
-            alert('Sila pilih barang terlebih dahulu!');
+            await customAlert('Sila pilih barang terlebih dahulu!');
             return;
         }
 
         if (qtyPack === 0 && qtyCarton === 0) {
-            alert('Sila masukkan sekurang-kurangnya 1 Pack atau Carton!');
+            await customAlert('Sila masukkan sekurang-kurangnya 1 Pack atau Carton!');
             return;
         }
 
@@ -104,11 +165,11 @@ if (formStockIn) {
 
         const totalPrice = (qtyPack * item.packPrice) + (qtyCarton * item.cartonPrice);
 
-        addHistoryRecord({
+        historyData.unshift({
             date: new Date().toLocaleString('ms-MY'),
             type: 'STOK IN',
             person: `${inputter} (Penginput)`,
-            itemId: item.id, // Simpan ID untuk rujukan padanan stok
+            itemId: item.id,
             itemName: item.name,
             qtyPack: qtyPack,
             qtyCarton: qtyCarton,
@@ -118,15 +179,16 @@ if (formStockIn) {
 
         saveToLocalStorage();
         renderStockTable();
+        renderHistoryTable();
         this.reset();
-        alert('Stok In berjaya direkodkan!');
+        await customAlert('Stok In berjaya direkodkan!');
     });
 }
 
 // Pengendali Borang Stok OUT
 const formStockOut = document.getElementById('formStockOut');
 if (formStockOut) {
-    formStockOut.addEventListener('submit', function(e) {
+    formStockOut.addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const applicant = document.getElementById('outApplicant').value;
@@ -137,19 +199,19 @@ if (formStockOut) {
         const qtyCarton = parseInt(document.getElementById('outCarton').value) || 0;
 
         if (!itemId) {
-            alert('Sila pilih barang terlebih dahulu!');
+            await customAlert('Sila pilih barang terlebih dahulu!');
             return;
         }
 
         if (qtyPack === 0 && qtyCarton === 0) {
-            alert('Sila masukkan sekurang-kurangnya 1 Pack atau Carton!');
+            await customAlert('Sila masukkan sekurang-kurangnya 1 Pack atau Carton!');
             return;
         }
 
         const item = inventoryData.find(i => i.id === itemId);
 
         if (qtyPack > item.stockPack || qtyCarton > item.stockCarton) {
-            alert(`Stok tidak mencukupi! Baki semasa: ${item.stockPack} Pack, ${item.stockCarton} Carton.`);
+            await customAlert(`Stok tidak mencukupi! Baki semasa: ${item.stockPack} Pack, ${item.stockCarton} Carton.`);
             return;
         }
 
@@ -159,11 +221,11 @@ if (formStockOut) {
         const totalPrice = (qtyPack * item.packPrice) + (qtyCarton * item.cartonPrice);
         const personDetail = `${applicant} ${matric ? '(' + matric + ')' : ''} ${kiosk ? '[' + kiosk + ']' : ''}`;
 
-        addHistoryRecord({
+        historyData.unshift({
             date: new Date().toLocaleString('ms-MY'),
             type: 'STOK OUT',
             person: personDetail,
-            itemId: item.id, // Simpan ID untuk rujukan padanan stok
+            itemId: item.id,
             itemName: item.name,
             qtyPack: qtyPack,
             qtyCarton: qtyCarton,
@@ -173,16 +235,10 @@ if (formStockOut) {
 
         saveToLocalStorage();
         renderStockTable();
+        renderHistoryTable();
         this.reset();
-        alert('Stok Out (Pengambilan) berjaya direkodkan!');
+        await customAlert('Stok Out (Pengambilan) berjaya direkodkan!');
     });
-}
-
-// Tambah Rekod ke Sejarah & Paparkan
-function addHistoryRecord(record) {
-    historyData.unshift(record);
-    saveToLocalStorage();
-    renderHistoryTable();
 }
 
 // Paparkan Jadual Sejarah dengan Checkbox
@@ -210,75 +266,57 @@ function renderHistoryTable() {
     if (selectAllHistory) selectAllHistory.checked = false;
 }
 
-// Ciri Pilih & Padam Log Transaksi (Auto Ubah Baki Stok)
-function setupDeleteSelectedHistoryFeature() {
-    const deleteSelectedHistoryBtn = document.getElementById('deleteSelectedHistoryBtn');
-    const selectAllHistory = document.getElementById('selectAllHistory');
+// Fungsi Utama: Padam Log & Auto-Reverse Stok
+async function deleteSelectedHistory() {
+    const checkedBoxes = document.querySelectorAll('.historyCheckbox:checked');
 
-    if (selectAllHistory) {
-        selectAllHistory.addEventListener('change', function() {
-            const rowCheckboxes = document.querySelectorAll('.historyCheckbox');
-            rowCheckboxes.forEach(cb => {
-                cb.checked = selectAllHistory.checked;
-            });
-        });
+    if (checkedBoxes.length === 0) {
+        await customAlert('Sila tandakan (pilih) sekurang-kurangnya satu rekod log yang hendak dipadam!');
+        return;
     }
 
-    if (deleteSelectedHistoryBtn) {
-        deleteSelectedHistoryBtn.addEventListener('click', function() {
-            const checkedBoxes = document.querySelectorAll('.historyCheckbox:checked');
+    const confirmDelete = await customConfirm(`Adakah anda pasti mahu memadam ${checkedBoxes.length} rekod log transaksi yang dipilih? Baki stok semasa akan dilaraskan semula.`);
+    if (!confirmDelete) return;
 
-            if (checkedBoxes.length === 0) {
-                alert('Sila tandakan (pilih) sekurang-kurangnya satu rekod log yang hendak dipadam!');
-                return;
-            }
+    const indexesToDelete = Array.from(checkedBoxes)
+        .map(cb => parseInt(cb.getAttribute('data-index')))
+        .sort((a, b) => b - a);
 
-            const confirmDelete = confirm(`Adakah anda pasti mahu memadam ${checkedBoxes.length} rekod log transaksi yang dipilih? Baki stok semasa akan dilaraskan semula.`);
-            if (!confirmDelete) return;
+    indexesToDelete.forEach(index => {
+        const record = historyData[index];
+        
+        if (record && record.itemId) {
+            const item = inventoryData.find(i => i.id === record.itemId);
 
-            const indexesToDelete = Array.from(checkedBoxes)
-                .map(cb => parseInt(cb.getAttribute('data-index')))
-                .sort((a, b) => b - a);
+            if (item) {
+                if (record.type === 'STOK IN') {
+                    item.stockPack -= (record.qtyPack || 0);
+                    item.stockCarton -= (record.qtyCarton || 0);
 
-            indexesToDelete.forEach(index => {
-                const record = historyData[index];
-                const item = inventoryData.find(i => i.id === record.itemId);
-
-                if (item) {
-                    // Jika log yang dipadam adalah STOK IN, maka tolak semula stok (reverse)
-                    if (record.type === 'STOK IN') {
-                        item.stockPack -= (record.qtyPack || 0);
-                        item.stockCarton -= (record.qtyCarton || 0);
-                        
-                        // Elakkan baki jadi negatif
-                        if (item.stockPack < 0) item.stockPack = 0;
-                        if (item.stockCarton < 0) item.stockCarton = 0;
-                    } 
-                    // Jika log yang dipadam adalah STOK OUT, maka tambah balik stok (reverse)
-                    else if (record.type === 'STOK OUT') {
-                        item.stockPack += (record.qtyPack || 0);
-                        item.stockCarton += (record.qtyCarton || 0);
-                    }
+                    if (item.stockPack < 0) item.stockPack = 0;
+                    if (item.stockCarton < 0) item.stockCarton = 0;
+                } else if (record.type === 'STOK OUT') {
+                    item.stockPack += (record.qtyPack || 0);
+                    item.stockCarton += (record.qtyCarton || 0);
                 }
+            }
+        }
 
-                // Buang dari senarai sejarah
-                historyData.splice(index, 1);
-            });
+        historyData.splice(index, 1);
+    });
 
-            saveToLocalStorage();
-            renderStockTable();
-            renderHistoryTable();
-            alert('Log transaksi berjaya dipadam dan baki stok semasa telah dikemas kini.');
-        });
-    }
+    saveToLocalStorage();
+    renderStockTable();
+    renderHistoryTable();
+    await customAlert('Log transaksi berjaya dipadam dan baki stok semasa telah dikemas kini.');
 }
 
 // Fungsi Muat Turun ke Excel (.xlsx)
 const exportBtn = document.getElementById('exportBtn');
 if (exportBtn) {
-    exportBtn.addEventListener('click', function() {
+    exportBtn.addEventListener('click', async function() {
         if (historyData.length === 0) {
-            alert('Tiada sebarang rekod transaksi untuk dimuat turun buat masa ini.');
+            await customAlert('Tiada sebarang rekod transaksi untuk dimuat turun buat masa ini.');
             return;
         }
 
